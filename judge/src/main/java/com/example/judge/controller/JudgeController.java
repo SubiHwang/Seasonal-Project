@@ -1,5 +1,8 @@
 package com.example.judge.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -9,35 +12,46 @@ import java.io.File;
 import java.io.IOException;
 
 @RestController
+@Tag(name = "Judge", description = "코드 저지 API")
 public class JudgeController {
 
-	@PostMapping("/greeting") //Body로 오는 것은 Post 방식.
-	public ResponseEntity<?> greeting(@RequestBody Greeting greeting) {
+	@Operation(summary = "코드 제출", description = "코드를 제출하고 결과를 반환합니다.")
+	@PostMapping(value = "/greeting", consumes = MediaType.TEXT_PLAIN_VALUE) //Body로 오는 것은 Post 방식.
+	public ResponseEntity<?> greeting(@RequestBody String str) {
 		//HTTP 요청의 body는 한 번만 읽을 수 있기 때문에 하나의 매개변수만 가능하다.
 
-		String str = greeting.answer();
-
-
+		//String str = greeting.answer();
+		
 		try {
 
-			File file = StringToFileConverter.convertStringToFile(str, "/Users/hsb/Desktop/ssafy-github/Seasonal-Project/judge");
-
+			File file = StringToFileConverter.convertStringToFile(str);
+			System.out.println("String을 파일 변환까지는 완료");
 
 			if (JavaCompileUtil.compileJava(file)) {
-				//컴파일이 완료되었으면 모든 테케와 답이 맞을 경우 코드 성공 리턴
 
+				System.out.println("컴파일까지는 완료");
+
+				int result = JudgeModule.judge(file);
+
+				System.out.println("성공 0 실패 1 : " + result);
+
+				switch (result) {
+					case 0:
+						return ResponseEntity.ok().body("코드 성공입니다.");
+					default:
+						return ResponseEntity.badRequest().body("코드 실패입니다.");
+				}
 
 			} else {
-				return ResponseEntity.badRequest().body("컴파일 오류 입니다.");
+				return ResponseEntity.unprocessableEntity().body("컴파일 오류 입니다.");
 			}
 
 
 		} catch (IOException e) {
 			e.printStackTrace();
+			return ResponseEntity.internalServerError().body("파일 처리 중 오류가 발생했습니다.");
 		}
 
-		//객체가 자바 객체로 변환된 후에 다시 json 객체로 바꿔지는 형태이다.
-		return ResponseEntity.ok().body("성공입니다.");
 	}
 
 }
